@@ -4,7 +4,7 @@
   "description": "Simple secure backend proxy for Docusaurus OpenAI Search plugin",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && mkdir -p api && cp dist/index.js api/index.js",
     "vercel-build": "npm run build",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts"
