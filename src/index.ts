@@ -8,25 +8,27 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Validate required environment variables
-if (!process.env.OPENAI_API_KEY) {
-  console.error('Error: OPENAI_API_KEY is required');
-  process.exit(1);
-}
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const ALLOWED_DOMAINS = process.env.ALLOWED_DOMAINS || '*';
 
-if (!process.env.ALLOWED_DOMAINS) {
-  console.error('Error: ALLOWED_DOMAINS is required');
-  process.exit(1);
+if (!OPENAI_API_KEY) {
+  console.warn('Warning: OPENAI_API_KEY is not set. API calls will fail.');
 }
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Parse allowed domains
-const allowedDomains = process.env.ALLOWED_DOMAINS.split(',').map(d => d.trim());
+const allowedDomains = ALLOWED_DOMAINS === '*' ? ['*'] : ALLOWED_DOMAINS.split(',').map(d => d.trim());
 
 // CORS configuration
 app.use(cors({
   origin: (origin, callback) => {
+    // Allow all origins if * is specified
+    if (allowedDomains.includes('*')) {
+      return callback(null, true);
+    }
+    
     // Allow requests with no origin (like mobile apps or Postman in dev)
     if (!origin && process.env.NODE_ENV === 'development') {
       return callback(null, true);
@@ -62,18 +64,30 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = OPENAI_API_KEY ? new OpenAI({
+  apiKey: OPENAI_API_KEY,
+}) : null;
 
 // Health check
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  const status = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    hasApiKey: !!OPENAI_API_KEY,
+    allowedDomains: allowedDomains
+  };
+  res.json(status);
 });
 
 // Chat completion endpoint
 app.post('/api/chat/completions', async (req, res) => {
   try {
+    if (!openai) {
+      return res.status(500).json({ 
+        error: { message: 'OpenAI API key not configured' } 
+      });
+    }
+
     const { model, messages, max_tokens, temperature, stream } = req.body;
 
     // Basic validation
@@ -108,6 +122,12 @@ app.post('/api/chat/completions', async (req, res) => {
 // Summarization endpoint
 app.post('/api/summarize', async (req, res) => {
   try {
+    if (!openai) {
+      return res.status(500).json({ 
+        error: { message: 'OpenAI API key not configured' } 
+      });
+    }
+
     const { query, content, model, maxTokens, systemPrompt } = req.body;
 
     // Basic validation
