@@ -1,6 +1,10 @@
-# Docusaurus OpenAI Search Backend Proxy
+# Docusaurus OpenAI Search Backend
 
-A simple, secure backend proxy for the Docusaurus OpenAI Search plugin that keeps your API key safe on the server.
+A secure backend proxy for the Docusaurus OpenAI Search plugin. This server handles OpenAI API requests, keeping your API key secure and adding rate limiting and CORS protection.
+
+## Deployment Status
+
+Deployed on Vercel: https://docusaurus-openai-search-backend.vercel.app
 
 ## Features
 
