@@ -9,6 +9,8 @@ This backend service is responsible for:
 - **Keyword Generation**: Analyzes queries to generate optimal search keywords
 - **Answer Generation**: Uses RAG to create comprehensive answers from documentation
 - **Security**: Keeps API keys secure and validates all requests
+- **Bot Protection**: reCAPTCHA v3 integration to prevent abuse
+- **Scalability**: Optimized for serverless deployment with smart rate limiting
 
 The frontend SDK simply coordinates between this backend and Algolia search.
 
@@ -21,8 +23,11 @@ Deployed on Vercel: https://docusaurus-openai-search-backend.vercel.app
 - 🔑 Secure API key management
 - 🎯 Intelligent keyword generation from user queries
 - 📚 RAG-based answer generation from documentation
-- ⚡ Rate limiting to prevent abuse
+- ⚡ Smart rate limiting (environment-aware)
 - 🌐 CORS configuration for secure frontend communication
+- 🛡️ reCAPTCHA v3 integration for bot protection
+- 🚀 Optimized for Vercel/serverless deployment
+- 📊 Handles multiple concurrent users efficiently
 
 ## Quick Start
 
@@ -160,14 +165,32 @@ ALLOWED_DOMAINS=https://site.com   # Comma-separated domains
 PORT=3000                          # Server port
 NODE_ENV=production               # Environment
 RATE_LIMIT=30                     # Requests per minute
+
+# reCAPTCHA (Optional but recommended)
+RECAPTCHA_SECRET_KEY=...          # Google reCAPTCHA v3 secret key
+RECAPTCHA_SCORE_THRESHOLD=0.5     # Score threshold (0.0-1.0)
 ```
 
 ## Security
 
 - **Domain Whitelisting**: Set `ALLOWED_DOMAINS` to your site URLs
-- **Rate Limiting**: Default 30 requests/minute per IP
+- **Rate Limiting**: Smart rate limiting that adapts to deployment environment
+  - Standard environments: 30 requests/minute per IP
+  - Vercel/serverless: Automatically adjusted for stateless nature
+- **reCAPTCHA v3**: Bot protection with score-based validation
 - **CORS**: Properly configured with credentials support
 - **HTTPS**: Always use HTTPS in production
+
+## Scalability
+
+This backend is designed to handle high traffic and multiple concurrent users:
+
+- **Serverless-Ready**: Optimized for Vercel and similar platforms
+- **Stateless Design**: No session storage, perfect for horizontal scaling
+- **Automatic Scaling**: Leverages platform auto-scaling capabilities
+- **Environment Detection**: Automatically adjusts behavior for optimal performance
+
+For detailed information about scalability and handling high traffic, see [SCALABILITY.md](./SCALABILITY.md).
 
 ## License
 

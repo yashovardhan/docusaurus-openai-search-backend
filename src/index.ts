@@ -1,8 +1,9 @@
 import express from 'express';
 import cors from 'cors';
-import rateLimit from 'express-rate-limit';
 import { OpenAI } from 'openai';
 import dotenv from 'dotenv';
+import { recaptchaMiddleware } from './middleware/recaptcha';
+import { createRateLimiter, rateLimitLogger, customRateLimitHandler } from './middleware/rateLimiting';
 import { 
   DEFAULT_CONFIG, 
   KEYWORD_GENERATION_PROMPT, 
@@ -59,14 +60,32 @@ app.use(cors({
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 
-// Rate limiting
-const limiter = rateLimit({
+// Enhanced rate limiting for Vercel/serverless environments
+const limiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
-  max: parseInt(process.env.RATE_LIMIT || '30'), // 30 requests per minute
-  message: 'Too many requests, please try again later.'
+  max: parseInt(process.env.RATE_LIMIT || '30'),
+  message: 'Too many requests, please try again later.',
+  handler: customRateLimitHandler
 });
 
+// Apply rate limiting to API routes
 app.use('/api/', limiter);
+
+// Optional: Add rate limit logging for debugging
+if (process.env.NODE_ENV !== 'production') {
+  app.use(rateLimitLogger());
+}
+
+// Apply reCAPTCHA middleware to API endpoints
+const captcha = recaptchaMiddleware({
+  skipPaths: ['/health', '/api/chat/completions', '/api/summarize'],
+  scoreThreshold: parseFloat(process.env.RECAPTCHA_SCORE_THRESHOLD || '0.5'),
+  enabledActions: ['keywords', 'generate_answer']
+});
+
+// Apply captcha middleware only to specific endpoints
+app.use('/api/keywords', captcha);
+app.use('/api/generate-answer', captcha);
 
 // Initialize OpenAI client
 const openai = new OpenAI({
