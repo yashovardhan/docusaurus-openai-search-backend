@@ -1,7 +1,7 @@
 {
-  "name": "docusaurus-openai-search-proxy",
-  "version": "1.0.0",
-  "description": "Simple secure backend proxy for Docusaurus OpenAI Search plugin",
+  "name": "docusaurus-openai-search-backend",
+  "version": "2.0.0",
+  "description": "AI backend service for Docusaurus OpenAI Search - handles keyword generation and RAG-based answer generation",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc && rm -rf api && cp -r dist api",
@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts"
   },
-  "keywords": ["docusaurus", "openai", "proxy", "search"],
+  "keywords": ["docusaurus", "openai", "search", "rag", "ai", "backend"],
   "author": "",
   "license": "MIT",
   "dependencies": {

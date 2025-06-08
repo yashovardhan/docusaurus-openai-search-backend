@@ -1,6 +1,16 @@
 # Docusaurus OpenAI Search Backend
 
-A secure backend proxy for the Docusaurus OpenAI Search plugin. This server handles OpenAI API requests, keeping your API key secure and adding rate limiting and CORS protection.
+AI backend service for the Docusaurus OpenAI Search plugin. This service is the brain of the AI search functionality, handling all AI operations including intelligent keyword generation and RAG-based answer generation, while keeping your OpenAI API keys secure on the server side.
+
+## Architecture
+
+This backend service is responsible for:
+- **AI Logic**: All prompts and AI interactions are handled here
+- **Keyword Generation**: Analyzes queries to generate optimal search keywords
+- **Answer Generation**: Uses RAG to create comprehensive answers from documentation
+- **Security**: Keeps API keys secure and validates all requests
+
+The frontend SDK simply coordinates between this backend and Algolia search.
 
 ## Deployment Status
 
@@ -8,12 +18,15 @@ Deployed on Vercel: https://docusaurus-openai-search-backend.vercel.app
 
 ## Features
 
-- 🔒 **Secure**: API key stored server-side only
-- 🛡️ **Domain Whitelisting**: Only authorized domains can access
-- ⚡ **Rate Limiting**: Built-in protection against abuse
-- 🚀 **Simple**: Minimal dependencies, easy to deploy
+- 🔑 Secure API key management
+- 🎯 Intelligent keyword generation from user queries
+- 📚 RAG-based answer generation from documentation
+- ⚡ Rate limiting to prevent abuse
+- 🌐 CORS configuration for secure frontend communication
 
 ## Quick Start
+
+1. Clone this repository
 
 ### 1. Clone and Install
 
@@ -81,14 +94,60 @@ git push heroku main
 
 ## API Endpoints
 
-### POST /api/chat/completions
-OpenAI chat completion proxy.
+### POST /api/keywords
+Generates optimized search keywords from a user query.
 
-### POST /api/summarize
-Document summarization endpoint.
+**Request:**
+```json
+{
+  "query": "How do I authenticate users?",
+  "systemContext": "Documentation for a React authentication library",
+  "maxKeywords": 5
+}
+```
 
-### GET /health
-Health check endpoint.
+**Response:**
+```json
+{
+  "keywords": ["user authentication", "login setup", "auth configuration", "authentication methods", "secure login"],
+  "usage": { /* OpenAI usage stats */ }
+}
+```
+
+### POST /api/generate-answer
+Generates a comprehensive answer using RAG from provided documents.
+
+**Request:**
+```json
+{
+  "query": "How do I authenticate users?",
+  "documents": [
+    {
+      "title": "Authentication Guide",
+      "url": "https://docs.example.com/auth",
+      "content": "..."
+    }
+  ],
+  "systemContext": "Documentation for a React authentication library",
+  "model": "gpt-4o-mini",
+  "maxTokens": 1500
+}
+```
+
+**Response:**
+```json
+{
+  "answer": "To authenticate users in our React library...",
+  "usage": { /* OpenAI usage stats */ },
+  "model": "gpt-4o-mini"
+}
+```
+
+### POST /api/chat/completions (Legacy)
+Direct proxy to OpenAI chat completions API (kept for backward compatibility).
+
+### POST /api/summarize (Legacy)
+Summarizes documentation content (kept for backward compatibility).
 
 ## Environment Variables
 
