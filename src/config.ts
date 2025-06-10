@@ -6,12 +6,12 @@ export const DEFAULT_CONFIG = {
   // Default model settings
   models: {
     keywords: {
-      model: 'gpt-4.1',
+      model: 'gpt-4.1-nano',
       maxTokens: 200,
       temperature: 0.3,
     },
     answer: {
-      model: 'gpt-4.1',
+      model: 'gpt-4.1-nano',
       maxTokens: 2000,
       temperature: 0.3,
     },
