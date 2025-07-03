@@ -53,7 +53,8 @@ export class RecursiveEnhancer {
           additionalDocs,
           depth + 1
         );
-        additionalDocs.push(...enhancedDocs);
+        // Use enhancedDocs directly as it already contains additionalDocs
+        return this.mergeDocuments(initialDocs, enhancedDocs);
       }
       
       // Merge and deduplicate
@@ -137,7 +138,7 @@ Example: ["authentication", "JWT tokens", "session management"]`;
       }
     }
     
-    console.log(`Merged ${merged.length} documents (${initialDocs.length} initial + ${additionalDocs.length - (merged.length - initialDocs.length)} new)`);
+    console.log(`Merged ${merged.length} documents (${initialDocs.length} initial + ${merged.length - initialDocs.length} new)`);
     return merged;
   }
   
