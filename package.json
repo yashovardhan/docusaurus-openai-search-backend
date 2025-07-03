@@ -1,6 +1,6 @@
 {
   "name": "docusaurus-openai-search-backend",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "AI backend service for Docusaurus OpenAI Search - handles keyword generation and RAG-based answer generation",
   "main": "dist/index.js",
   "scripts": {

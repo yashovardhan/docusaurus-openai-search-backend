@@ -148,3 +148,22 @@ When `NODE_ENV !== 'production'`, the API returns helpful headers:
    - Reduce response size limits
    - Stream large responses
    - Optimize document processing 
+
+# Security Best Practices
+
+## API Key Management
+
+1. **Never expose API keys in frontend code**
+   - All sensitive keys (OpenAI, GitHub) are stored as environment variables
+   - Frontend only knows the backend URL
+   
+2. **GitHub Token Security**
+   - GitHub Personal Access Token is stored as `GITHUB_TOKEN` env var
+   - Never passed from frontend to backend
+   - Backend handles all GitHub API authentication
+   
+3. **Domain Whitelisting**
+   - Only configured domains can access the backend
+   - Set via `ALLOWED_DOMAINS` environment variable
+
+## Monitoring 

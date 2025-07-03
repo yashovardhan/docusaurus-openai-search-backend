@@ -156,20 +156,20 @@ Summarizes documentation content (kept for backward compatibility).
 
 ## Environment Variables
 
-```bash
-# Required
-OPENAI_API_KEY=sk-...              # Your OpenAI API key
-ALLOWED_DOMAINS=https://site.com   # Comma-separated domains
+| Variable | Required | Description | Default |
+|----------|----------|-------------|---------|
+| `OPENAI_API_KEY` | Yes | Your OpenAI API key | - |
+| `ALLOWED_DOMAINS` | Yes | Comma-separated list of allowed domains | - |
+| `PORT` | No | Port to run the server on | 3000 |
+| `NODE_ENV` | No | Environment (development/production) | development |
+| `RATE_LIMIT` | No | Max requests per minute per IP | 30 |
+| `GITHUB_TOKEN` | No | GitHub Personal Access Token for issue/discussion search | - |
+| `RECAPTCHA_SECRET_KEY` | No | Google reCAPTCHA v3 secret key | - |
+| `RECAPTCHA_SCORE_THRESHOLD` | No | Minimum reCAPTCHA score (0.0-1.0) | 0.5 |
 
-# Optional
-PORT=3000                          # Server port
-NODE_ENV=production               # Environment
-RATE_LIMIT=30                     # Requests per minute
+### Security Note
 
-# reCAPTCHA (Optional but recommended)
-RECAPTCHA_SECRET_KEY=...          # Google reCAPTCHA v3 secret key
-RECAPTCHA_SCORE_THRESHOLD=0.5     # Score threshold (0.0-1.0)
-```
+The GitHub Personal Access Token (`GITHUB_TOKEN`) is stored securely as an environment variable on the backend. It is never exposed to or passed from the frontend, ensuring your token remains secure.
 
 ## Security
 
@@ -180,6 +180,7 @@ RECAPTCHA_SCORE_THRESHOLD=0.5     # Score threshold (0.0-1.0)
 - **reCAPTCHA v3**: Bot protection with score-based validation
 - **CORS**: Properly configured with credentials support
 - **HTTPS**: Always use HTTPS in production
+- **API Key Security**: All sensitive keys (OpenAI, GitHub) stored as environment variables
 
 ## Scalability
 
@@ -194,4 +195,4 @@ For detailed information about scalability and handling high traffic, see [SCALA
 
 ## License
 
-MIT 
+MIT
