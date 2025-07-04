@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { OpenAI } from 'openai';
 import dotenv from 'dotenv';
+import algoliasearch from 'algoliasearch';
 import { recaptchaMiddleware } from './middleware/recaptcha';
 import { createRateLimiter, rateLimitLogger, customRateLimitHandler } from './middleware/rateLimiting';
 import { 
@@ -12,6 +13,7 @@ import {
   RESULT_AGGREGATION_PROMPT
 } from './config';
 import { RecursiveEnhancer, DocumentContent } from './services/recursiveEnhancer';
+import { createHash } from 'crypto';
 
 // Load environment variables
 dotenv.config();
@@ -92,6 +94,12 @@ app.use('/api/generate-answer', captcha);
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Initialize Algolia client for Discourse integration
+const algoliaClient = algoliasearch(
+  process.env.ALGOLIA_APP_ID || '6OF28D8CMV',
+  process.env.ALGOLIA_API_KEY || '425a1e860cb4b9b4ce1f7d9b117c7a81'
+);
 
 // Initialize RecursiveEnhancer for Stage 3 fine-tuned model support
 const recursiveEnhancer = new RecursiveEnhancer();
@@ -260,6 +268,197 @@ function validateAIResponse(answer: string, documents: any[]): ValidationResult 
     }
   };
 }
+
+// === PHASE 3: PRODUCTION MONITORING & HEALTH CHECKS ===
+
+interface HealthStatus {
+  status: 'healthy' | 'unhealthy' | 'degraded';
+  timestamp: number;
+  version: string;
+  environment: string;
+  checks: {
+    [key: string]: {
+      status: 'ok' | 'error' | 'warning';
+      message: string;
+      duration_ms?: number;
+    };
+  };
+}
+
+interface SystemMetrics {
+  uptime: number;
+  memory: NodeJS.MemoryUsage;
+  requests: {
+    total: number;
+    successful: number;
+    failed: number;
+    discourse_requests: number;
+    avg_response_time: number;
+  };
+  discourse: {
+    confidence_distribution: {
+      HIGH: number;
+      MEDIUM: number;
+      LOW: number;
+    };
+    cache_hit_rate: number;
+    auto_post_rate: number;
+  };
+  algolia: {
+    search_requests: number;
+    errors: number;
+    avg_response_time: number;
+  };
+}
+
+// Global metrics tracking
+const globalMetrics: SystemMetrics = {
+  uptime: Date.now(),
+  memory: process.memoryUsage(),
+  requests: {
+    total: 0,
+    successful: 0,
+    failed: 0,
+    discourse_requests: 0,
+    avg_response_time: 0
+  },
+  discourse: {
+    confidence_distribution: { HIGH: 0, MEDIUM: 0, LOW: 0 },
+    cache_hit_rate: 0,
+    auto_post_rate: 0
+  },
+  algolia: {
+    search_requests: 0,
+    errors: 0,
+    avg_response_time: 0
+  }
+};
+
+// Health check endpoint
+app.get('/health', async (_req, res) => {
+  const healthStatus: HealthStatus = {
+    status: 'healthy',
+    timestamp: Date.now(),
+    version: process.env.npm_package_version || '3.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    checks: {}
+  };
+
+  // Check OpenAI API
+  try {
+    const start = Date.now();
+    const testResponse = await fetch('https://api.openai.com/v1/models', {
+      headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` }
+    });
+    
+    if (testResponse.ok) {
+      healthStatus.checks.openai = {
+        status: 'ok',
+        message: 'OpenAI API accessible',
+        duration_ms: Date.now() - start
+      };
+    } else {
+      throw new Error(`OpenAI API returned ${testResponse.status}`);
+    }
+  } catch (error) {
+    healthStatus.checks.openai = {
+      status: 'error',
+      message: `OpenAI API error: ${error instanceof Error ? error.message : String(error)}`
+    };
+    healthStatus.status = 'degraded';
+  }
+
+  // Check Algolia
+  try {
+    const start = Date.now();
+    const algoliaClient = algoliasearch(
+      process.env.ALGOLIA_APP_ID || '6OF28D8CMV',
+      process.env.ALGOLIA_API_KEY || '425a1e860cb4b9b4ce1f7d9b117c7a81'
+    );
+    
+    const index = algoliaClient.initIndex(process.env.ALGOLIA_INDEX_NAME || 'docs-web3auth');
+    await index.search('test', { hitsPerPage: 1 });
+    
+    healthStatus.checks.algolia = {
+      status: 'ok',
+      message: 'Algolia search accessible',
+      duration_ms: Date.now() - start
+    };
+  } catch (error) {
+    healthStatus.checks.algolia = {
+      status: 'error',
+      message: `Algolia error: ${error instanceof Error ? error.message : String(error)}`
+    };
+    healthStatus.status = 'degraded';
+  }
+
+  // Check memory usage
+  const memoryUsage = process.memoryUsage();
+  const memoryUsageMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
+  
+  if (memoryUsageMB > 800) {
+    healthStatus.checks.memory = {
+      status: 'warning',
+      message: `High memory usage: ${memoryUsageMB}MB`
+    };
+    healthStatus.status = 'degraded';
+  } else {
+    healthStatus.checks.memory = {
+      status: 'ok',
+      message: `Memory usage: ${memoryUsageMB}MB`
+    };
+  }
+
+  // Check response times
+  const avgResponseTime = globalMetrics.requests.avg_response_time;
+  if (avgResponseTime > 8000) {
+    healthStatus.checks.performance = {
+      status: 'warning',
+      message: `High response time: ${avgResponseTime}ms`
+    };
+    healthStatus.status = 'degraded';
+  } else {
+    healthStatus.checks.performance = {
+      status: 'ok',
+      message: `Avg response time: ${avgResponseTime}ms`
+    };
+  }
+
+  // Return appropriate status code
+  const statusCode = healthStatus.status === 'healthy' ? 200 : 
+                    healthStatus.status === 'degraded' ? 202 : 503;
+  
+  res.status(statusCode).json(healthStatus);
+});
+
+// Metrics endpoint (protected)
+app.get('/api/discourse-metrics', async (req, res) => {
+  // Simple authentication check
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const token = authHeader.slice(7);
+  if (token !== process.env.DISCOURSE_API_KEY) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+
+  // Update current metrics
+  globalMetrics.memory = process.memoryUsage();
+  
+  // Calculate auto-post rate
+  const highConfidenceCount = globalMetrics.discourse.confidence_distribution.HIGH;
+  const totalDiscourseRequests = globalMetrics.requests.discourse_requests;
+  globalMetrics.discourse.auto_post_rate = totalDiscourseRequests > 0 ? 
+    (highConfidenceCount / totalDiscourseRequests) * 100 : 0;
+
+  return res.json({
+    ...globalMetrics,
+    uptime_seconds: Math.floor((Date.now() - globalMetrics.uptime) / 1000),
+    timestamp: Date.now()
+  });
+});
 
 // Health check
 app.get('/health', (_req, res) => {
@@ -1263,6 +1462,18 @@ app.post('/api/multi-source-search', async (req, res) => {
   }
 });
 
+/**
+ * Discourse Integration - Import from separate modules
+ */
+
+// Import Discourse functionality from separate modules
+import discourseRouter from './api/discourse-response';
+import healthRouter from './api/discourse-health';
+
+// Use Discourse routers
+app.use('/api', discourseRouter);
+app.use(healthRouter);
+
 // Error handling middleware
 app.use((err: any, _req: any, res: any, _next: any) => {
   console.error('Error:', err);
@@ -1275,4 +1486,5 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Allowed domains: ${allowedDomains.join(', ')}`);
+  console.log(`Discourse integration: ${process.env.DISCOURSE_API_KEY ? 'Enabled' : 'Disabled'}`);
 }); 

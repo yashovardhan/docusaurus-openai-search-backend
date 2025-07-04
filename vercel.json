@@ -11,5 +11,10 @@
       "src": "/(.*)",
       "dest": "/src/index.ts"
     }
-  ]
+  ],
+  "functions": {
+    "src/index.ts": {
+      "maxDuration": 30
+    }
+  }
 } 
